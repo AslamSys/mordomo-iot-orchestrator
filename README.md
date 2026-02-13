@@ -2,7 +2,7 @@
 
 ## 🔗 Navegação
 
-**[🏠 AslamSys](https://github.com/AslamSys)** → **[📚 _system](https://github.com/AslamSys/_system)** → **[📂 IoT (RPi 3B+)](https://github.com/AslamSys/_system/blob/main/hardware/iot/README.md)** → **iot-orchestrator**
+**[🏠 AslamSys](https://github.com/AslamSys)** → **[📚 _system](https://github.com/AslamSys/_system)** → **[📂 IoT (RPi 3B+)](https://github.com/AslamSys/_system/blob/main/hardware/iot%20-%20(raspberry-pi-3b)/README.md)** → **iot-orchestrator**
 
 ### Containers Relacionados (iot)
 - [iot-mqtt-broker](https://github.com/AslamSys/iot-mqtt-broker)
