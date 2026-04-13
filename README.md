@@ -113,6 +113,34 @@ LLM gera ação precisa: `set_state("luz_sala_principal", "brightness", 50)`.
 
 ### Subscribe
 ```javascript
+// ── Fechaduras ─────────────────────────────────────────────
+// Abrir por reconhecimento facial (publicado pelo seguranca-face-recognition)
+Topic: "seguranca.access.granted"
+Payload: {
+  "identity_id": "joao",
+  "display_name": "João",
+  "zone": "porta_entrada",
+  "device_id": "fechadura_entrada",
+  "confidence": 0.97,
+  "timestamp": "2026-04-13T08:30:00Z"
+}
+
+// Abrir por comando explícito do Mordomo (WhatsApp, voz, dashboard)
+// Ignora face recognition — o usuário autorizou manualmente
+Topic: "iot.lock.unlock"
+Payload: {
+  "device_id": "fechadura_entrada",    // ou "fechadura_garagem"
+  "requested_by": "mordomo",           // identifica a origem do comando
+  "reason": "user_command",            // "user_command" | "access_granted" | "schedule"
+  "duration_seconds": 10,             // quanto tempo fica destravada (0 = toggle)
+  "command_id": "cmd_abc123"
+}
+
+// Travar explicitamente
+Topic: "iot.lock.lock"
+Payload: { "device_id": "fechadura_entrada", "command_id": "cmd_abc124" }
+
+// ── Controle de luz ────────────────────────────────────────
 // Controle de luz
 Topic: "iot.light.turn_on|turn_off|set_brightness|set_color"
 Payload: {
@@ -221,6 +249,55 @@ HTTP: Smart plugs, cameras APIs
 ```
 
 ---
+## 🔐 Controle de Acesso por Trust Level (NATS)
+
+Nem todos os serviços têm permissão para publicar em todos os tópicos IoT. Fechaduras requerem **trust elevado** — apenas usuários NATS explicitamente autorizados podem emitir comandos de lock/unlock.
+
+```
+Trust Nível 1 (qualquer serviço IoT):  iot.device.control.>  — luzes, tomadas, AC
+Trust Nível 2 (só mordomo-brain):      iot.lock.>            — fechaduras físicas
+Trust Nível 2 (só seguranca):          seguranca.access.granted → iot-orchestrator traduz
+```
+
+| Usuário NATS | `iot.device.control.>` | `iot.lock.>` |
+|---|---|---|
+| `mordomo-brain` | ✅ | ✅ |
+| `seguranca-face-recognition` | ✅ | 🚫 publica `seguranca.access.granted` → orchestrator converte |
+| `openclaw` | ✅ | 🚫 |
+| `mordomo-skills-runner` | ✅ | 🚫 |
+
+> **Por que `seguranca-face-recognition` não publica direto em `iot.lock.*`?** Porque segurança decide, IoT executa — separação de responsabilidades. O `iot-orchestrator` é o único que fala MQTT.
+
+---
+## � Controle de Fechadura — Prioridade de Comandos
+
+A fechadura pode ser acionada por três origens distintas, com prioridade explícita:
+
+| Prioridade | Origem | Topic NATS | Bypass face? |
+|---|---|---|---|
+| 1 (mais alta) | Comando Mordomo (voz/WhatsApp/dashboard) | `iot.lock.unlock` | ✅ Sim |
+| 2 | Reconhecimento facial autorizado | `seguranca.access.granted` | — |
+| 3 | Programação de horário | `iot.schedule.trigger` | ✅ Sim |
+
+**Caso de uso típico:** Usuário pede via WhatsApp *"abre o portão pra fulano"* → `mordomo-brain` interpreta → publica `iot.lock.unlock` → portão abre, independente da câmera ou face recognition.
+
+### Mapeamento dispositivo → MQTT
+```yaml
+# config/locks.yaml
+locks:
+  fechadura_entrada:
+    mqtt_topic: "home/locks/entrada/set"
+    mqtt_payload_unlock: '{"state": "UNLOCK"}'
+    mqtt_payload_lock:   '{"state": "LOCK"}'
+    auto_lock_seconds: 10    # retrava automaticamente após N segundos
+  fechadura_garagem:
+    mqtt_topic: "home/locks/garagem/set"
+    mqtt_payload_unlock: '{"state": "UNLOCK"}'
+    mqtt_payload_lock:   '{"state": "LOCK"}'
+    auto_lock_seconds: 30
+```
+
+---
 
 ## 🔄 Changelog
 
@@ -229,3 +306,4 @@ HTTP: Smart plugs, cameras APIs
 - ✅ Direct command execution (no LLM)
 - ✅ Device state management
 - ✅ < 100ms latency
+- ✅ Door lock control (face recognition + Mordomo override)
