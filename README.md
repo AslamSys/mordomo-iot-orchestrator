@@ -1,18 +1,18 @@
-# 🎛️ IoT Orchestrator
+﻿# 🎛️ IoT Orchestrator
 
 ## 🔗 Navegação
 
-**[🏠 AslamSys](https://github.com/AslamSys)** → **[📚 _system](https://github.com/AslamSys/_system)** → **[📂 IoT (RPi 3B+)](https://github.com/AslamSys/_system/blob/main/hardware/iot%20-%20(raspberry-pi-3b)/README.md)** → **iot-orchestrator**
+**[🏠 AslamSys](https://github.com/AslamSys)** → **[📚 _system](https://github.com/AslamSys/_system)** → **[📂 IoT](https://github.com/AslamSys/mordomo/blob/main/iot)/README.md)** → **iot-orchestrator**
 
 ### Containers Relacionados (iot)
 - [iot-mqtt-broker](https://github.com/AslamSys/iot-mqtt-broker)
-- [iot-state-cache](https://github.com/AslamSys/iot-state-cache)
+- [infra/redis](https://github.com/AslamSys/infra) — db 2 (iot-state)
 
 ---
 
 **Container:** `iot-orchestrator`  
 **Ecossistema:** IoT  
-**Hardware:** Raspberry Pi 3B+  
+**Hardware:** Orange Pi 5 Ultra  
 **Sem LLM:** Execução direta de comandos
 
 ---
@@ -264,7 +264,6 @@ Trust Nível 2 (só seguranca):          seguranca.access.granted → iot-orches
 | `mordomo-brain` | ✅ | ✅ |
 | `seguranca-face-recognition` | ✅ | 🚫 publica `seguranca.access.granted` → orchestrator converte |
 | `openclaw` | ✅ | 🚫 |
-| `mordomo-skills-runner` | ✅ | 🚫 |
 
 > **Por que `seguranca-face-recognition` não publica direto em `iot.lock.*`?** Porque segurança decide, IoT executa — separação de responsabilidades. O `iot-orchestrator` é o único que fala MQTT.
 

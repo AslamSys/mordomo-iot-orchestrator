@@ -1,0 +1,14 @@
+{
+  "name": "mordomo-iot-orchestrator",
+  "version": "1.0.0",
+  "description": "IoT orchestrator — routes NATS commands to MQTT devices and manages state in Redis",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "node src/main.js"
+  },
+  "dependencies": {
+    "mqtt": "^5.10.1",
+    "nats": "^2.28.2",
+    "redis": "^4.7.0"
+  }
+}
