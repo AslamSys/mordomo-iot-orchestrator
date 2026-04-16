@@ -77,6 +77,31 @@ function routeCommand(mqttClient, subject, payload) {
   console.log(`[Router] ${subject} → MQTT ${mqttTopic}`);
 }
 
+/**
+ * Handle a structured command from mordomo-orchestrator.
+ * Subject: mordomo.iot.command
+ * Payload: { device_id, command, speaker_id, action_type, [extra params] }
+ *
+ * Maps payload.command → MQTT action. Examples:
+ *   command: "turn_on"   → mordomo/iot/{device_id}/turn_on
+ *   command: "turn_off"  → mordomo/iot/{device_id}/turn_off
+ *   command: "set"       → mordomo/iot/{device_id}/set (with full payload as MQTT payload)
+ */
+function routeStructuredCommand(mqttClient, payload) {
+  const { device_id, command } = payload;
+  if (!device_id || !command) {
+    console.warn("[Router] mordomo.iot.command missing device_id or command:", payload);
+    return { success: false, error: "missing device_id or command" };
+  }
+
+  const mqttTopic = buildMqttTopic(device_id, command);
+  // Strip orchestrator meta fields before forwarding
+  const { speaker_id, action_type, command_id, __secret, ...mqttPayload } = payload;
+  mqttClient.publish(mqttTopic, JSON.stringify(mqttPayload), { qos: 1 });
+  console.log(`[Router] mordomo.iot.command → MQTT ${mqttTopic}`);
+  return { success: true };
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 async function main() {
   const redis = await connectRedis();
@@ -113,6 +138,7 @@ async function main() {
   // Subscribe to all iot.* commands
   const iotSub = nc.subscribe("iot.>");
   const lockSub = nc.subscribe("seguranca.access.granted");
+  const mordoIotSub = nc.subscribe("mordomo.iot.command");
 
   (async () => {
     for await (const msg of iotSub) {
@@ -152,6 +178,34 @@ async function main() {
         console.log(`[Access] Door unlocked for ${device_id} (confidence: ${confidence})`);
       } catch (e) {
         console.error("[NATS] Error processing access.granted:", e.message);
+      }
+    }
+  })();
+
+  // Handle structured commands from mordomo-orchestrator
+  (async () => {
+    for await (const msg of mordoIotSub) {
+      const commandId = `cmd_${Date.now()}`;
+      try {
+        const payload = JSON.parse(sc.decode(msg.data));
+        const result = routeStructuredCommand(mqttClient, payload);
+        const confirm = {
+          command_id: payload.command_id ?? commandId,
+          device_id: payload.device_id,
+          success: result.success,
+          latency_ms: 0,
+          ...(result.error ? { error: result.error } : {}),
+        };
+        nc.publish("iot.command.executed", sc.encode(JSON.stringify(confirm)));
+      } catch (e) {
+        console.error("[NATS] Error processing mordomo.iot.command:", e.message);
+        const payload = JSON.parse(sc.decode(msg.data));
+        nc.publish("iot.command.executed", sc.encode(JSON.stringify({
+          command_id: commandId,
+          device_id: payload?.device_id ?? "unknown",
+          success: false,
+          error: e.message,
+        })));
       }
     }
   })();

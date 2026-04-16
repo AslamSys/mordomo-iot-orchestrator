@@ -113,6 +113,18 @@ LLM gera ação precisa: `set_state("luz_sala_principal", "brightness", 50)`.
 
 ### Subscribe
 ```javascript
+// ── Comandos do Mordomo (orchestrator) ────────────────────
+// Formato estruturado: device_id + command no payload
+Topic: "mordomo.iot.command"
+Payload: {
+  "speaker_id":  "user_1",
+  "action_type": "iot_control",
+  "device_id":   "luz_sala",
+  "command":     "turn_on",     // turn_on | turn_off | set | toggle
+  "brightness":  80,            // parâmetros extras opcionais
+  "command_id":  "cmd_abc123"
+}
+
 // ── Fechaduras ─────────────────────────────────────────────
 // Abrir por reconhecimento facial (publicado pelo seguranca-face-recognition)
 Topic: "seguranca.access.granted"
